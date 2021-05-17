@@ -1,0 +1,9 @@
+[FORMAT]
+max-line-length=120
+# fn: closure, to: english word, T: generic type
+good-names=fn,to,T
+
+[MASTER]
+# not all internal functions are supposed to be documented
+# however modules and classes do need docstrings
+disable = C0116
