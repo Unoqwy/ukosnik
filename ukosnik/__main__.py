@@ -114,9 +114,9 @@ try:
         for command in document.commands:
             command_name = command["name"]
             try:
-                client.upsert_command(application_id, command)
+                command_id = client.upsert_command(application_id, command)["id"]
                 verb = "Updated" if command_name in existing_command_names else "Inserted"
-                ok(f"{verb} command '{command_name}' successfully.")
+                ok(f"{verb} command '{command_name}' ({command_id}) successfully.")
             except HTTPRequestException as err:
                 fail(f"Failed to upsert command {command_name}.\nError: {err}")
         else:
