@@ -1,11 +1,87 @@
-sub-anchor: &test-anchor
-  type: SUB_COMMAND
-  description: Subcommand registered with an anchor to flatten file
+# Example command taken from official docs.
+# (https://discord.com/developers/docs/interactions/slash-commands#example-walkthrough)
+#
+# This example use anchors to flatten the file to make it more readable.
+# Usage of anchors is not enforced by any mean.
+
+<<: &perm_user
+  description: "Get or edit permissions for a user"
+  type: SUBCOMMAND_GROUP
+  options:
+    get:
+      type: SUBCOMMAND
+      description: "Get permissions for a user"
+      options:
+        user:
+          type: USER
+          description: "The user to get"
+          required: true
+        channel:
+          type: CHANNEL
+          description: "The channel permissions to get. If omitted, the guild permissions will be returned"
+    edit:
+      type: SUBCOMMAND
+      description: "Edit permissions for a user"
+      options:
+        user:
+          type: USER
+          description: "The user to edit"
+          required: true
+        channel:
+          type: CHANNEL
+          description: "The channel permissions to edit. If omitted, the guild permissions will be edited"
+<<: &perm_role
+  description: "Get or edit permissions for a role"
+  type: SUBCOMMAND_GROUP
+  options:
+    get:
+      type: SUBCOMMAND
+      description: "Get permissions for a role"
+      options:
+        user:
+          type: ROLE
+          description: "The role to get"
+          required: true
+        channel:
+          type: CHANNEL
+          description: "The channel permissions to get. If omitted, the guild permissions will be returned"
+    edit:
+      type: SUBCOMMAND
+      description: "Edit permissions for a role"
+      options:
+        user:
+          type: ROLE
+          description: "The role to edit"
+        channel:
+          type: CHANNEL
+          description: "The channel permissions to edit. If omitted, the guild permissions will be edited"
 
 commands:
-  uko:
-    description: Main test command
+  # Example implementation of default example
+  permissions:
+    description: "Get or edit permissions for a user or a role"
     options:
-      anchor: *test-anchor
+      user: *perm_user
+      role: *perm_role
+
+  # Test command to try choices
+  try-choices:
+    description: "Try choices feature"
+    options:
+      preferred:
+        type: STRING
+        description: "Tell us what programming language you prefer"
+        choices:
+          - name: Rust
+            value: rust
+          # if value is ommited, it will default to name
+          - name: Haskell
+          - name: C
+        required: true
+      list:
+        type: STRING
+        description: "Demonstration of simple list"
+        # name and values can be omitted altogether and be a simple string
+        choices: [A, B, C, D, E, F]
 
 # vim:ts=2:sw=2:et
