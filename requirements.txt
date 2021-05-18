@@ -1,6 +1,10 @@
-certifi==2020.12.5
-chardet==4.0.0
-idna==2.10
-PyYAML==5.4.1
-requests==2.25.1
-urllib3==1.26.4
+# http
+requests>=2.25,<=3
+
+# file types
+PyYAML>=5.4,<=6
+# json: builtin
+
+# 3.6 backport
+dataclasses==0.8
+typing-extensions==3.10.0.0

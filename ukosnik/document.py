@@ -3,7 +3,8 @@ This module contains class definitions and functions to read from parsed file.
 """
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, TypeVar, TypedDict, Union
+from typing_extensions import TypedDict
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 import re
 from enum import Enum
 import ukosnik.docent as doc

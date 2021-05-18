@@ -24,7 +24,7 @@ class Client:
         assert token is not None, "Token required"
         assert base_url is not None and base_url.startswith("https://"), "Base URL must use HTTPS"
 
-        self.base_url = base_url.removesuffix("/")
+        self.base_url = base_url.rstrip('/')
         self.headers = {
             "Authorization": token,
             "User-Agent": f"https://github.com/Unoqwy/ukosnik (v{__version__})",
