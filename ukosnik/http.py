@@ -20,7 +20,7 @@ class Client:
         self,
         token: str,
         base_url: str = "https://discord.com/api/v9",
-    ) -> None:
+    ):
         assert token is not None, "Token required"
         assert base_url is not None and base_url.startswith("https://"), "Base URL must use HTTPS"
 
@@ -55,7 +55,7 @@ class Client:
 
 class CommandManager:
     """Contextual wrapper arround command endpoints."""
-    def __init__(self, client: Client, application_id: int, guild_id: Optional[int]) -> None:
+    def __init__(self, client: Client, application_id: int, guild_id: Optional[int]):
         self.client = client
         self.application_id = application_id
         self.guild_id = guild_id

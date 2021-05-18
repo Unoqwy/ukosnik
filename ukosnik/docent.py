@@ -6,10 +6,10 @@ The functions in this module should most likely not be used externally.
 
 from inspect import signature
 from types import FunctionType
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 
-# Error
+# Errors
 class ReadError(Exception):
     """Base error for when a given dict cannot be read into a document."""
 
@@ -22,49 +22,60 @@ class MissingValueError(ReadError):
     """Raised when a required value is missing."""
 
 
-# Functions
+# Generics and type aliases
 T = TypeVar("T")
+DocDict = Dict[str, Any]
+ReadFn = Callable[[Optional[str], Any], T]  # closure taking key, value
+SimpleFn = Callable[[Any], T]  # closure taking only value
 
-# FIXME: typings are completely unreadable
 
-
-def read(doc_dict: Dict[str, Any], keys: Union[str, List[str]], fn: Callable[[str, Any], T]) -> T:
+# Read
+def read(doc_dict: DocDict,
+         keys: Union[str, List[str]],
+         fn: ReadFn[T],
+         to: Optional[DocDict] = None,
+         to_key: Optional[str] = None) -> T:
     assert isinstance(fn, FunctionType), "fn must be a valid function"
     if isinstance(keys, str):
         keys = [keys]
+
+    key, value = __read(doc_dict, keys, fn)
+    if to is not None:
+        to_key = to_key if to_key is not None else key
+        if to_key is not None and value is not None:
+            to[to_key] = value
+    return value
+
+
+def __read(doc_dict: DocDict, keys: List[str], fn: ReadFn[T]) -> Tuple[Optional[str], T]:
     for key in keys:
         if key in doc_dict:
-            return fn(key, doc_dict[key])
-    return fn(keys[0] if len(keys) > 0 else None, None)
+            return key, fn(key, doc_dict[key])
+    key = keys[0] if len(keys) > 0 else None
+    return key, fn(key, None)
 
 
-def read_to(
-    doc_dict: Dict[str, Any],
-    key: str,
-    fn: Callable[[str, Any], Any],
-    to: Dict[str, Any],
-    to_key: Optional[str] = None,
-):
-    value = read(doc_dict, key, fn)
-    if value is not None:
-        to[to_key if to_key is not None else key] = value
+def with_default(parent: Union[ReadFn[T], SimpleFn[T]], default: T) -> ReadFn[T]:
+    if len(signature(parent).parameters) == 1:
+        fn = lambda _, value: parent(value)  # type: ignore
+    else:
+        fn = cast(ReadFn[T], parent)
+    return lambda key, value: fn(key, value) if value is not None else default
 
 
-def typed(kind: Type[T], optional: bool = False) -> Callable[[str, Any], T]:
-    def __fn(key, value):
+def typed(type_hint: Type, optional: bool = False) -> ReadFn[Any]:
+    def __fn(key: Optional[str], value: Any) -> Any:
         if optional and value is None:
             return value
         if value is None:
             raise ValueTypeError(f"'{key}' is required yet missing.")
-        if not isinstance(value, kind):
-            raise ValueTypeError(f"Expected value from '{key}' to be of type '{kind.__name__}' but is it \
-                        of type '{type(value).__name__}' instead.")
+
+        args = type_hint.__args__ if hasattr(type_hint, "__args__") else type_hint
+        if not isinstance(value, args):
+            raise ValueTypeError(" ".join([
+                f"Expected value from '{key}' to be of type '{type_hint.__name__}'",
+                f"but is it of type '{type(value).__name__}' instead."
+            ]))
         return value
 
-    return __fn  # type: ignore
-
-
-def with_default(fn: Union[Callable[[str, Any], T], Callable[[Any], T]], default: T) -> Callable[[str, Any], T]:
-    if len(signature(fn).parameters) == 1:
-        return lambda _, value: fn(value) if value is not None else default  # type: ignore
-    return lambda key, value: fn(key, value) if value is not None else default  # type: ignore
+    return __fn

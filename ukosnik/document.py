@@ -2,11 +2,13 @@
 This module contains class definitions and functions to read from parsed file.
 """
 
-from dataclasses import dataclass
-from typing_extensions import TypedDict
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 import re
 from enum import Enum
+
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing_extensions import TypedDict
+
 import ukosnik.docent as doc
 
 
@@ -133,8 +135,8 @@ def read_commands(data: Any) -> List[Command]:
             "name": name,
             "description": description,
         }
-        doc.read_to(doc_command, "options", doc.with_default(read_options, None), to=command)
-        doc.read_to(
+        doc.read(doc_command, "options", doc.with_default(read_options, None), to=command)
+        doc.read(
             doc_command,
             "default-permission",
             doc.typed(bool, optional=True),
@@ -152,18 +154,19 @@ def read_options(data: Any) -> List[CommandOption]:
         name = doc.read(doc_option, "name", doc.typed(str))
         description = doc.read(doc_option, "description", doc.typed(str))
         validate_meta(MetaType.OPTION, name, description)
-        kind_key = doc.read(doc_option, "type", doc.typed((str, int)))  # type: ignore
+        kind_key = doc.read(doc_option, "type", doc.typed(Union[str, int]))
         try:
             kind = CommandOptionType.from_str(kind_key) if isinstance(kind_key, str) else CommandOptionType(kind_key)
         except ValueError as err:
-            raise InvalidOptionTypeError(f"{kind_key} is not a valid command option type.\
-                    It must be between 1 and 9 (both inclusive).") from err
+            raise InvalidOptionTypeError(" ".join(
+                [f"{kind_key} is not a valid command option type.",
+                 "It must be between 1 and 9 (both inclusive)."])) from err
         option = {
             "name": name,
             "description": description,
             "type": kind.value,
         }
-        doc.read_to(doc_option, "required", doc.typed(bool, optional=True), to=option)
+        doc.read(doc_option, "required", doc.typed(bool, optional=True), to=option)
         if "choices" in doc_option and isinstance(doc_option["choices"], list):
             choices = []
             for doc_choice in doc_option["choices"]:
@@ -175,10 +178,10 @@ def read_options(data: Any) -> List[CommandOption]:
                 validate_length("Choice name", choice_name)
                 choices.append({
                     "name": choice_name,
-                    "value": doc.read(doc_choice, ["value", "name"], doc.typed((str, int)))  # type: ignore
+                    "value": doc.read(doc_choice, ["value", "name"], doc.typed(Union[str, int]))
                 })
             option["choices"] = choices
-        doc.read_to(doc_option, "options", doc.with_default(read_options, None), to=option)
+        doc.read(doc_option, "options", doc.with_default(read_options, None), to=option)
         return option  # type: ignore
 
     return __read_list_or_keyed("Option", data, __fn)
@@ -192,7 +195,7 @@ def __read_list_or_keyed(kind: str, data: Any, fn: Callable[[Dict[str, Any]], T]
     if isinstance(data, dict):
         doc_values = []
         for name, doc_value in data.items():
-            if not isinstance(doc_values, dict):
+            if not isinstance(doc_value, dict):
                 raise doc.ValueTypeError(f"{kind} '{name}' is not an object.")
             if not "name" in doc_value:
                 doc_value["name"] = name
@@ -208,7 +211,7 @@ def __read_list_or_keyed(kind: str, data: Any, fn: Callable[[Dict[str, Any]], T]
             options.append(fn(doc_value))
         except doc.ReadError as err:
             name = doc_value["name"] if "name" in doc_value else "unnamed"
-            raise ContextualError(f"{kind.lower()} '{name}' — ({err})") from err
+            raise ContextualError(f"'{name}' > {err}") from err
     return options
 
 
