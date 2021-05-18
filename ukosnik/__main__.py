@@ -75,6 +75,8 @@ if app_args.subcommand == "update":
                 _, ext = os.path.splitext(app_args.config)
                 if ext in (".yml", ".yaml"):
                     from yaml import full_load as read_file
+                elif ext == ".json":
+                    from json import load as read_file
                 else:
                     raise Exception("Unsupported file type '%s'." % ext)
                 doc_dict = read_file(config_file)

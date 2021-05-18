@@ -1,0 +1,111 @@
+{
+  "_README_": [
+    "Example of using raw json data as a command.",
+
+    "What is the difference with 'regular' and 'raw' data?",
+    "Regular data expects command/option names to be dictionary keys and not embedded in list.",
+    "Note: 'Raw' doesn't mean the data isn't validated, it's only an alternative format.",
+
+    "Follow command taken directly from:",
+    "https://discord.com/developers/docs/interactions/slash-commands#example-walkthrough"
+  ],
+
+  "commands": [{
+    "name": "permissions-raw",
+    "description": "Get or edit permissions for a user or a role",
+    "options": [
+      {
+        "name": "user",
+        "description": "Get or edit permissions for a user",
+        "type": 2,
+        "options": [
+          {
+            "name": "get",
+            "description": "Get permissions for a user",
+            "type": 1,
+            "options": [
+              {
+                "name": "user",
+                "description": "The user to get",
+                "type": 6,
+                "required": true
+              },
+              {
+                "name": "channel",
+                "description": "The channel permissions to get. If omitted, the guild permissions will be returned",
+                "type": 7,
+                "required": false
+              }
+            ]
+          },
+          {
+            "name": "edit",
+            "description": "Edit permissions for a user",
+            "type": 1,
+            "options": [
+              {
+                "name": "user",
+                "description": "The user to edit",
+                "type": 6,
+                "required": true
+              },
+              {
+                "name": "channel",
+                "description": "The channel permissions to edit. If omitted, the guild permissions will be edited",
+                "type": 7,
+                "required": false
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "role",
+        "description": "Get or edit permissions for a role",
+        "type": 2,
+        "options": [
+          {
+            "name": "get",
+            "description": "Get permissions for a role",
+            "type": 1,
+            "options": [
+              {
+                "name": "role",
+                "description": "The role to get",
+                "type": 8,
+                "required": true
+              },
+              {
+                "name": "channel",
+                "description": "The channel permissions to get. If omitted, the guild permissions will be returned",
+                "type": 7,
+                "required": false
+              }
+            ]
+          },
+          {
+            "name": "edit",
+            "description": "Edit permissions for a role",
+            "type": 1,
+            "options": [
+              {
+                "name": "role",
+                "description": "The role to edit",
+                "type": 8,
+                "required": true
+              },
+              {
+                "name": "channel",
+                "description": "The channel permissions to edit. If omitted, the guild permissions will be edited",
+                "type": 7,
+                "required": false
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }],
+
+  "__modeline__": "/* vim: set et ts=2 sw=2: */"
+}

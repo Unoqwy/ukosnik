@@ -3,7 +3,7 @@ This module contains class definitions and functions to read from parsed file.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, TypedDict, Union, get_args
+from typing import Any, Callable, Dict, List, Optional, TypeVar, TypedDict, Union
 import re
 from enum import Enum
 import ukosnik.docent as doc
@@ -114,69 +114,100 @@ def read(doc_dict: Dict[str, Any]) -> Document:
     """Reads a dictionary representing a document into a document.
     The dict may come from parsed yaml, json, toml, and whatnot.
     """
-    commands = doc.read(doc_dict, "commands", doc.with_default(read_commands, []))
+
+    try:
+        commands = doc.read(doc_dict, "commands", doc.with_default(read_commands, []))
+    except doc.ReadError as err:
+        raise ContextualError(f"While reading commands: {err}") from err
     return Document(commands)
 
 
-def read_commands(doc_commands: Dict[str, Any]) -> List[Command]:
-    """Reads a list of commands from a raw dict."""
-    commands = []
-    for name, doc_command in doc_commands.items():
+def read_commands(data: Any) -> List[Command]:
+    """Reads a list of commands from raw data."""
+    def __fn(doc_command: Dict[str, Any]) -> Command:
+        name = doc.read(doc_command, "name", doc.typed(str))
+        description = doc.read(doc_command, "description", doc.typed(str))
+        validate_meta(MetaType.COMMAND, name, description)
+        command = {
+            "name": name,
+            "description": description,
+        }
+        doc.read_to(doc_command, "options", doc.with_default(read_options, None), to=command)
+        doc.read_to(
+            doc_command,
+            "default-permission",
+            doc.typed(bool, optional=True),
+            to=command,
+            to_key="default_permission",
+        )
+        return command  # type: ignore
+
+    return __read_list_or_keyed("Command", data, __fn)
+
+
+def read_options(data: Any) -> List[CommandOption]:
+    """Reads a list of command options from raw data"""
+    def __fn(doc_option: Dict[str, Any]) -> CommandOption:
+        name = doc.read(doc_option, "name", doc.typed(str))
+        description = doc.read(doc_option, "description", doc.typed(str))
+        validate_meta(MetaType.OPTION, name, description)
+        kind_key = doc.read(doc_option, "type", doc.typed((str, int)))  # type: ignore
         try:
-            description = doc.read(doc_command, "description", doc.typed(str))
-            validate_meta(MetaType.COMMAND, name, description)
-            command = {
-                "name": name,
-                "description": description,
-            }
-            doc.read_to(doc_command, "options", doc.with_default(read_options, None), to=command)
-            doc.read_to(
-                doc_command,
-                "default-permission",
-                doc.typed(bool, optional=True),
-                to=command,
-                to_key="default_permission",
-            )
-            commands.append(command)
-        except doc.ReadError as err:
-            raise ContextualError(f"While reading command '{name}': {err}.") from err
-    return commands
+            kind = CommandOptionType.from_str(kind_key) if isinstance(kind_key, str) else CommandOptionType(kind_key)
+        except ValueError as err:
+            raise InvalidOptionTypeError(f"{kind_key} is not a valid command option type.\
+                    It must be between 1 and 9 (both inclusive).") from err
+        option = {
+            "name": name,
+            "description": description,
+            "type": kind.value,
+        }
+        doc.read_to(doc_option, "required", doc.typed(bool, optional=True), to=option)
+        if "choices" in doc_option and isinstance(doc_option["choices"], list):
+            choices = []
+            for doc_choice in doc_option["choices"]:
+                if isinstance(doc_choice, (str, int)):
+                    doc_choice = {"name": doc_choice}
+                if not isinstance(doc_choice, dict):
+                    raise doc.ValueTypeError(f"Choice of unexpected type '{type(doc_choice).__name__}'")
+                choice_name = doc.read(doc_choice, "name", doc.typed(str))
+                validate_length("Choice name", choice_name)
+                choices.append({
+                    "name": choice_name,
+                    "value": doc.read(doc_choice, ["value", "name"], doc.typed((str, int)))  # type: ignore
+                })
+            option["choices"] = choices
+        doc.read_to(doc_option, "options", doc.with_default(read_options, None), to=option)
+        return option  # type: ignore
+
+    return __read_list_or_keyed("Option", data, __fn)
 
 
-def read_options(doc_options: Dict[str, Any]) -> List[CommandOption]:
-    """Reads a list of command options from a raw dict"""
+T = TypeVar("T")
+
+
+def __read_list_or_keyed(kind: str, data: Any, fn: Callable[[Dict[str, Any]], T]) -> List[T]:
+    """DRY function to read either a list or a dictionnary with value's name being the key."""
+    if isinstance(data, dict):
+        doc_values = []
+        for name, doc_value in data.items():
+            if not isinstance(doc_values, dict):
+                raise doc.ValueTypeError(f"{kind} '{name}' is not an object.")
+            if not "name" in doc_value:
+                doc_value["name"] = name
+            doc_values.append(doc_value)
+    elif isinstance(data, list):
+        doc_values = data
+    else:
+        raise doc.ValueTypeError(f"{kind}s must either be an array or an object with option names as keys.")
+
     options = []
-    for name, doc_option in doc_options.items():
+    for doc_value in doc_values:
         try:
-            description = doc.read(doc_option, "description", doc.typed(str))
-            validate_meta(MetaType.OPTION, name, description)
-            kind = doc.read(doc_option, "type", doc.typed(str))
-            option = {
-                "name": name,
-                "description": description,
-                "type": CommandOptionType.from_str(kind).value,
-            }
-            doc.read_to(doc_option, "required", doc.typed(bool, optional=True), to=option)
-            if "choices" in doc_option and isinstance(doc_option["choices"], list):
-                choices = []
-                for doc_choice in doc_option["choices"]:
-                    if isinstance(doc_choice, (str, int)):
-                        doc_choice = {"name": doc_choice}
-                    if not isinstance(doc_choice, dict):
-                        raise doc.ValueTypeError(f"Choice of unexpected type '{type(doc_choice).__name__}'")
-                    choice_name = doc.read(doc_choice, "name", doc.typed(str))
-                    validate_length("Choice name", choice_name)
-                    choices.append({
-                        "name":
-                        choice_name,
-                        "value":
-                        doc.read(doc_choice, ["value", "name"], doc.typed(get_args(Union[str, int])))  # type: ignore
-                    })
-                option["choices"] = choices
-            doc.read_to(doc_option, "options", doc.with_default(read_options, None), to=option)
-            options.append(option)
+            options.append(fn(doc_value))
         except doc.ReadError as err:
-            raise ContextualError(f"option '{name}' — {err}.") from err
+            name = doc_value["name"] if "name" in doc_value else "unnamed"
+            raise ContextualError(f"{kind.lower()} '{name}' — ({err})") from err
     return options
 
 
