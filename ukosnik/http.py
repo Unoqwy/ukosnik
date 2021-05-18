@@ -3,11 +3,11 @@ Requests should not be handled in any other module.
 """
 
 from typing import Any, Dict, List, Optional
-from ukosnik.document import Command
 import requests
 from requests.models import Response
 
 from ukosnik import __version__
+from ukosnik.document import Command
 
 
 class HTTPRequestException(Exception):

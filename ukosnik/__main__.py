@@ -111,29 +111,32 @@ try:
 
     if app_args.subcommand == "update":
         # doc is defined but ls struggles to know it
+        # pylint: disable=self-assigning-variable
         document = document  # type: ignore
 
         existing_command_names = set(map(lambda command: command["name"], existing_commands))
         command_names = set(map(lambda command: command["name"], document.commands))
 
-        step = 1
+        # why tf does pylint think step should be a constant
+        step = 1  # pylint: disable=C0103
         print(f"[{step}] Updating commands...")
+        if len(document.commands) == 0:
+            info("No commands to insert/update.")
         for command in document.commands:
             command_name = command["name"]
             try:
                 command_id = commands_manager.upsert_command(command)["id"]
-                verb = "Updated" if command_name in existing_command_names else "Created"
-                ok(f"{verb} command '{command_name}' ({command_id}) successfully.")
+                VERB = "Updated" if command_name in existing_command_names else "Created"
+                ok(f"{VERB} command '{command_name}' ({command_id}) successfully.")
             except HTTPRequestException as err:
                 fail(f"Failed to upsert command {command_name}.\nError: {err}")
-        else:
-            if len(document.commands) == 0:
-                info("No commands to insert/update.")
 
+        step += 1
         if app_args.d:
-            step += 1
             print(f"[{step}] Delete flag detected, deleting former commmands...")
             former_commands = [cmd for cmd in existing_commands if cmd["name"] not in command_names]
+            if len(former_commands) == 0:
+                info("No former commands to delete.")
             for command in former_commands:
                 command_name = command["name"]
                 try:
@@ -141,9 +144,6 @@ try:
                     ok(f"Deleted command '{command_name}' ({command['id']}) sucessfully.")
                 except HTTPRequestException as err:
                     fail(f"Failed to delete command {command_name}.\nError: {err}")
-            else:
-                if len(former_commands) == 0:
-                    info("No former commands to delete.")
         print("Slash commands updated successfully.")
     elif app_args.subcommand == "clear":
         print("Clearing all slash commands...")

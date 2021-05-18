@@ -139,7 +139,7 @@ def read_commands(doc_commands: Dict[str, Any]) -> List[Command]:
             )
             commands.append(command)
         except doc.ReadError as err:
-            raise ContextualError(f"While reading command '{name}': {err}.")
+            raise ContextualError(f"While reading command '{name}': {err}.") from err
     return commands
 
 
@@ -160,7 +160,7 @@ def read_options(doc_options: Dict[str, Any]) -> List[CommandOption]:
             if "choices" in doc_option and isinstance(doc_option["choices"], list):
                 choices = []
                 for doc_choice in doc_option["choices"]:
-                    if isinstance(doc_choice, str) or isinstance(doc_choice, int):
+                    if isinstance(doc_choice, (str, int)):
                         doc_choice = {"name": doc_choice}
                     if not isinstance(doc_choice, dict):
                         raise doc.ValueTypeError(f"Choice of unexpected type '{type(doc_choice).__name__}'")
@@ -176,7 +176,7 @@ def read_options(doc_options: Dict[str, Any]) -> List[CommandOption]:
             doc.read_to(doc_option, "options", doc.with_default(read_options, None), to=option)
             options.append(option)
         except doc.ReadError as err:
-            raise ContextualError(f"option '{name}' — {err}.")
+            raise ContextualError(f"option '{name}' — {err}.") from err
     return options
 
 
@@ -189,9 +189,9 @@ def validate_meta(kind: MetaType, name: str, description: str):
     validate_length("Description", description)
 
 
-def validate_length(kind: str, value: str, min: int = 1, max: int = 100):
+def validate_length(kind: str, value: str, _min: int = 1, _max: int = 100):
     """Validates length of a value."""
-    if len(value) < min:
-        raise ValidationError(f"{kind} '{value}' must be at least {min} chars long.")
-    if len(value) > max:
-        raise ValidationError(f"{kind} '{value}' must be strictly less than {max + 1} chars long.")
+    if len(value) < _min:
+        raise ValidationError(f"{kind} '{value}' must be at least {_min} chars long.")
+    if len(value) > _max:
+        raise ValidationError(f"{kind} '{value}' must be strictly less than {_max + 1} chars long.")
