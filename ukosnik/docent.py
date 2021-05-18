@@ -6,7 +6,7 @@ The functions in this module should most likely not be used externally.
 
 from inspect import signature
 from types import FunctionType
-from typing import Any, Callable, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union
 
 
 # Error
@@ -28,11 +28,14 @@ T = TypeVar("T")
 # FIXME: typings are completely unreadable
 
 
-def read(doc_dict: Dict[str, Any], key: str, fn: Callable[[str, Any], T]) -> T:
+def read(doc_dict: Dict[str, Any], keys: Union[str, List[str]], fn: Callable[[str, Any], T]) -> T:
     assert isinstance(fn, FunctionType), "fn must be a valid function"
-    if key in doc_dict:
-        return fn(key, doc_dict[key])
-    return fn(key, None)
+    if isinstance(keys, str):
+        keys = [keys]
+    for key in keys:
+        if key in doc_dict:
+            return fn(key, doc_dict[key])
+    return fn(keys[0] if len(keys) > 0 else None, None)
 
 
 def read_to(

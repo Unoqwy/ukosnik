@@ -3,13 +3,17 @@ This module contains class definitions and functions to read from parsed file.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, TypedDict, Union
+from typing import Any, Dict, List, Optional, TypedDict, Union, get_args
 import re
 from enum import Enum
 import ukosnik.docent as doc
 
 
 # Errors
+class ContextualError(doc.ReadError):
+    """Error adding context to a child error that was raised."""
+
+
 class ValidationError(doc.ReadError):
     """Raised when a value doesn't pass validation (e.g. pattern restriction)."""
 
@@ -118,21 +122,24 @@ def read_commands(doc_commands: Dict[str, Any]) -> List[Command]:
     """Reads a list of commands from a raw dict."""
     commands = []
     for name, doc_command in doc_commands.items():
-        description = doc.read(doc_command, "description", doc.typed(str))
-        validate_meta(MetaType.COMMAND, name, description)
-        command = {
-            "name": name,
-            "description": description,
-        }
-        doc.read_to(doc_command, "options", doc.with_default(read_options, None), to=command)
-        doc.read_to(
-            doc_command,
-            "default-permission",
-            doc.typed(bool, optional=True),
-            to=command,
-            to_key="default_permission",
-        )
-        commands.append(command)
+        try:
+            description = doc.read(doc_command, "description", doc.typed(str))
+            validate_meta(MetaType.COMMAND, name, description)
+            command = {
+                "name": name,
+                "description": description,
+            }
+            doc.read_to(doc_command, "options", doc.with_default(read_options, None), to=command)
+            doc.read_to(
+                doc_command,
+                "default-permission",
+                doc.typed(bool, optional=True),
+                to=command,
+                to_key="default_permission",
+            )
+            commands.append(command)
+        except doc.ReadError as err:
+            raise ContextualError(f"While reading command '{name}': {err}.")
     return commands
 
 
@@ -140,15 +147,36 @@ def read_options(doc_options: Dict[str, Any]) -> List[CommandOption]:
     """Reads a list of command options from a raw dict"""
     options = []
     for name, doc_option in doc_options.items():
-        description = doc.read(doc_option, "description", doc.typed(str))
-        validate_meta(MetaType.OPTION, name, description)
-        kind = doc.read(doc_option, "type", doc.typed(str))
-        option = {
-            "name": name,
-            "description": description,
-            "type": CommandOptionType.from_str(kind).value,
-        }
-        options.append(option)
+        try:
+            description = doc.read(doc_option, "description", doc.typed(str))
+            validate_meta(MetaType.OPTION, name, description)
+            kind = doc.read(doc_option, "type", doc.typed(str))
+            option = {
+                "name": name,
+                "description": description,
+                "type": CommandOptionType.from_str(kind).value,
+            }
+            doc.read_to(doc_option, "required", doc.typed(bool, optional=True), to=option)
+            if "choices" in doc_option and isinstance(doc_option["choices"], list):
+                choices = []
+                for doc_choice in doc_option["choices"]:
+                    if isinstance(doc_choice, str) or isinstance(doc_choice, int):
+                        doc_choice = {"name": doc_choice}
+                    if not isinstance(doc_choice, dict):
+                        raise doc.ValueTypeError(f"Choice of unexpected type '{type(doc_choice).__name__}'")
+                    choice_name = doc.read(doc_choice, "name", doc.typed(str))
+                    validate_length("Choice name", choice_name)
+                    choices.append({
+                        "name":
+                        choice_name,
+                        "value":
+                        doc.read(doc_choice, ["value", "name"], doc.typed(get_args(Union[str, int])))  # type: ignore
+                    })
+                option["choices"] = choices
+            doc.read_to(doc_option, "options", doc.with_default(read_options, None), to=option)
+            options.append(option)
+        except doc.ReadError as err:
+            raise ContextualError(f"option '{name}' — {err}.")
     return options
 
 
@@ -158,7 +186,12 @@ def validate_meta(kind: MetaType, name: str, description: str):
         raise ValidationError(f"Command name '{name}' must be alphanumeric and less than 32 chars long.")
     if description is None:
         raise ValidationError(f"Description is required for {kind.value} '{name}'.")
-    if len(description) < 1:
-        raise ValidationError(f"Description '{description}' must not be empty.")
-    if len(description) > 100:
-        raise ValidationError(f"Description '{description}' must be less than 100 chars long.")
+    validate_length("Description", description)
+
+
+def validate_length(kind: str, value: str, min: int = 1, max: int = 100):
+    """Validates length of a value."""
+    if len(value) < min:
+        raise ValidationError(f"{kind} '{value}' must be at least {min} chars long.")
+    if len(value) > max:
+        raise ValidationError(f"{kind} '{value}' must be strictly less than {max + 1} chars long.")

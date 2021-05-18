@@ -2,7 +2,7 @@
 Requests should not be handled in any other module.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from ukosnik.document import Command
 import requests
 from requests.models import Response
@@ -20,7 +20,7 @@ class Client:
         self,
         token: str,
         base_url: str = "https://discord.com/api/v9",
-    ):
+    ) -> None:
         assert token is not None, "Token required"
         assert base_url is not None and base_url.startswith("https://"), "Base URL must use HTTPS"
 
@@ -52,11 +52,27 @@ class Client:
     def get_application_id(self) -> int:
         return self.get("oauth2/applications/@me").json()["id"]
 
-    def fetch_commands(self, application_id: int) -> List[Command]:
-        return self.get(f"applications/{application_id}/commands").json()
 
-    def upsert_command(self, application_id: int, command: Command) -> Command:
-        return self.post(f"applications/{application_id}/commands", command).json() # type: ignore
+class CommandManager:
+    """Contextual wrapper arround command endpoints."""
+    def __init__(self, client: Client, application_id: int, guild_id: Optional[int]) -> None:
+        self.client = client
+        self.application_id = application_id
+        self.guild_id = guild_id
 
-    def delete_command(self, application_id: int, command_id: int):
-        self.delete(f"applications/{application_id}/commands/{command_id}")
+        base = f"applications/{self.application_id}"
+        if self.guild_id is not None:
+            base = f"{base}/guilds/{self.guild_id}"
+        self.endpoint = f"{base}/commands"
+
+    def command_endpoint(self, command_id: int) -> str:
+        return f"{self.endpoint}/{command_id}"
+
+    def fetch_commands(self) -> List[Command]:
+        return self.client.get(self.endpoint).json()
+
+    def upsert_command(self, command: Command) -> Command:
+        return self.client.post(self.endpoint, command).json()  # type: ignore
+
+    def delete_command(self, command_id: int):
+        self.client.delete(self.command_endpoint(command_id))
