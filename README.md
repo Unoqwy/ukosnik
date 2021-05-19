@@ -16,6 +16,7 @@ You may alternatively clone the repository and install the package from local so
 ## Usage
 
 The following examples assume the environment variable `DISCORD_TOKEN` to be set.  
+To make examples simpler, `python3 -m ukosnik` is aliased with `unosnik`, but make sure to use full command path.  
 
 **Register/update slash commands:**  
 

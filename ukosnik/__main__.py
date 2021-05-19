@@ -8,11 +8,13 @@ import os
 import sys
 import traceback
 
+from ukosnik import __version__
 from ukosnik.docent import ReadError
 from ukosnik.http import Client, CommandManager, HTTPRequestException
 import ukosnik.document as ukodoc
 
 cli = argparse.ArgumentParser(description="Manage slash commands easily for your Discord bot")
+cli.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 subparsers = cli.add_subparsers(dest="subcommand")
 
 # args
