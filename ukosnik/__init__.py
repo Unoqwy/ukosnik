@@ -1,3 +1,3 @@
 """Ukosnik - Manage Discord slash commands."""
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
