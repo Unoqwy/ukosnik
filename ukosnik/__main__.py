@@ -91,8 +91,8 @@ if app_args.subcommand == "update":
                 fail(f"Could not parse configuration file.\nError: {err}")
     except IsADirectoryError:
         fail("Configuration file cannot be a directory.")
-    except FileNotFoundError:
-        fail("Configuration file not found.")
+    except FileNotFoundError as err:
+        fail(f"Configuration file not found. ({err})")
 
     if len(document.commands) > 0:
         info(f"Loaded {len(document.commands)} command(s).")
@@ -128,10 +128,11 @@ try:
             command_name = command["name"]
             try:
                 command_id = commands_manager.upsert_command(command)["id"]
-                VERB = "Updated" if command_name in existing_command_names else "Created"
+                VERB = "Updated" if command_name in existing_command_names else "Registered"
                 ok(f"{VERB} command '{command_name}' ({command_id}) successfully.")
             except HTTPRequestException as err:
-                fail(f"Failed to upsert command {command_name}.\nError: {err}")
+                VERB = "update" if command_name in existing_command_names else "register"
+                fail(f"Failed to {VERB} command {command_name}.\nError: {err}")
 
         step += 1
         if app_args.d:
