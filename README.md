@@ -55,5 +55,5 @@ ukosnik clear --guild GUILD_ID
 Configuration documents are pretty straighforward. They can be either a yml or json file.
 
 For now, the only available field in a configuration document is `commands`. You may provide either an object of commands with the command name as key or a simple list.  
-To get a better understanding of how you can register commands, take a look at the [examples](./examples).
+To get a better understanding of how you can register commands, take a look at the [examples](https://github.com/Unoqwy/ukosnik/tree/master/examples).
 
